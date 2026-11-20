@@ -2,6 +2,7 @@ const std = @import("std");
 const Io = std.Io;
 const fmt = std.fmt;
 const mem = std.mem;
+const testing = std.testing;
 const Allocator = mem.Allocator;
 const assert = std.debug.assert;
 
@@ -24,6 +25,75 @@ const Status = enum {
     }
 };
 
+pub const DeviceInfo = struct {
+    const Status = enum {
+        device,
+        offline,
+        unauthoried,
+        authorizing,
+        unkown,
+
+        pub fn fromString(string: []const u8) @This() {
+            const status_info = comptime @typeInfo(DeviceInfo.Status).@"enum";
+            inline for (status_info.field_names, status_info.field_values) |key, value| {
+                if (mem.eql(u8, key, string)) return @fromBackingInt(value);
+            }
+
+            return .unkown;
+        }
+    };
+
+    serial: []const u8,
+    device: ?[]const u8 = null,
+    model: ?[]const u8 = null,
+    product: ?[]const u8 = null,
+    status: DeviceInfo.Status = .unkown,
+
+    pub fn init(device_line: []const u8) @This() {
+        var device_info: DeviceInfo = undefined;
+        const device_serial_end = mem.findScalar(u8, device_line, ' ').?;
+        device_info.serial = device_line[0..device_serial_end];
+
+        const device_line_excluding_serial = mem.trimStart(u8, device_line[device_serial_end..], " ");
+        const device_status_end = mem.findScalar(u8, device_line_excluding_serial, ' ').?;
+        device_info.status = .fromString(device_line_excluding_serial[0..device_status_end]);
+        if (device_info.status != .device) return device_info;
+
+        const device_line_rest = device_line_excluding_serial[device_status_end..];
+        inline for ([_][]const u8{ "product", "model", "device" }) |field| {
+            const prefix = field ++ ":";
+            if (mem.find(u8, device_line_rest, prefix)) |field_start| {
+                const field_value_start = field_start + prefix.len;
+                const field_end = mem.findScalarPos(u8, device_line_rest, field_value_start, ' ').?;
+                @field(device_info, field) = device_line_rest[field_value_start..field_end];
+            }
+        }
+
+        return device_info;
+    }
+};
+
+test "parse device line" {
+    const expected = DeviceInfo{
+        .serial = "SX1QW2RE48F",
+        .status = .device,
+        .product = "brick01s",
+        .model = "B01fx",
+        .device = "brick01",
+    };
+
+    const device_line = fmt.comptimePrint("{s}{s}{s} usb:3-2 product:{s} model:{s} device:{s} transport_id:2", .{
+        expected.serial,
+        @as([12]u8, @splat(' ')),
+        @tagName(expected.status),
+        expected.product.?,
+        expected.model.?,
+        expected.device.?,
+    });
+
+    try testing.expectEqualDeep(expected, DeviceInfo.init(device_line));
+}
+
 pub fn version(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]const u8 {
     const payload = "host:version";
     const request = fmt.comptimePrint("{x:0>4}{s}", .{ payload.len, payload });
@@ -34,6 +104,32 @@ pub fn version(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]
         .okay => {
             const len = try length(reader);
             return reader.readAllocAll(allocator, len);
+        },
+        .fail => {
+            // TODO:
+            @panic("not implemented");
+        },
+        else => unreachable,
+    }
+}
+
+pub fn devices(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]DeviceInfo {
+    const payload = "host:devices-l";
+    const request = fmt.comptimePrint("{x:0>4}{s}", .{ payload.len, payload });
+    try writer.writeAll(request);
+    try writer.flush();
+
+    switch (try status(reader)) {
+        .okay => {
+            var device_list: std.ArrayList(DeviceInfo) = .empty;
+            errdefer device_list.deinit(allocator);
+
+            _ = try reader.discard(.limited(4));
+            while (try reader.takeDelimiter('\n')) |device_line| {
+                try device_list.append(allocator, .init(device_line));
+            }
+
+            return device_list.toOwnedSlice(allocator);
         },
         .fail => {
             // TODO:

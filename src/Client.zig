@@ -36,6 +36,10 @@ pub fn version(self: @This(), io: Io, allocator: Allocator) ![]const u8 {
     return execRequest([]const u8, io, self.ip4, internal.version, .{allocator});
 }
 
+pub fn devices(self: @This(), io: Io, allocator: Allocator) ![]internal.DeviceInfo {
+    return execRequest([]internal.DeviceInfo, io, self.ip4, internal.devices, .{allocator});
+}
+
 fn execRequest(
     comptime T: type,
     io: Io,
