@@ -94,7 +94,7 @@ test "parse device line" {
     try testing.expectEqualDeep(expected, DeviceInfo.init(device_line));
 }
 
-pub fn version(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]const u8 {
+pub fn version(writer: *Io.Writer, reader: *Io.Reader) !u32 {
     const payload = "host:version";
     const request = fmt.comptimePrint("{x:0>4}{s}", .{ payload.len, payload });
     try writer.writeAll(request);
@@ -103,7 +103,8 @@ pub fn version(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]
     switch (try status(reader)) {
         .okay => {
             const len = try length(reader);
-            return reader.readAllocAll(allocator, len);
+            const version_string = try reader.take(len);
+            return fmt.parseInt(u32, version_string, 10);
         },
         .fail => {
             // TODO:

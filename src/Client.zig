@@ -32,8 +32,8 @@ pub fn init(address: Address) !Client {
     unreachable;
 }
 
-pub fn version(self: @This(), io: Io, allocator: Allocator) ![]const u8 {
-    return execRequest([]const u8, io, self.ip4, internal.version, .{allocator});
+pub fn version(self: @This(), io: Io) !u32 {
+    return execRequest(u32, io, self.ip4, internal.version, .{});
 }
 
 pub fn devices(self: @This(), io: Io, allocator: Allocator) ![]internal.DeviceInfo {
