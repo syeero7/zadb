@@ -114,6 +114,22 @@ pub fn version(writer: *Io.Writer, reader: *Io.Reader) !u32 {
     }
 }
 
+pub fn kill(writer: *Io.Writer, reader: *Io.Reader) !void {
+    const payload = "host:kill";
+    const request = fmt.comptimePrint("{x:0>4}{s}", .{ payload.len, payload });
+    try writer.writeAll(request);
+    try writer.flush();
+
+    switch (try status(reader)) {
+        .okay => return,
+        .fail => {
+            // TODO:
+            @panic("not implemented");
+        },
+        else => unreachable,
+    }
+}
+
 pub fn devices(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]DeviceInfo {
     const payload = "host:devices-l";
     const request = fmt.comptimePrint("{x:0>4}{s}", .{ payload.len, payload });

@@ -36,6 +36,10 @@ pub fn version(self: @This(), io: Io) !u32 {
     return execRequest(u32, io, self.ip4, internal.version, .{});
 }
 
+pub fn kill(self: @This(), io: Io) !void {
+    return execRequest(void, io, self.ip4, internal.kill, .{});
+}
+
 pub fn devices(self: @This(), io: Io, allocator: Allocator) ![]internal.DeviceInfo {
     return execRequest([]internal.DeviceInfo, io, self.ip4, internal.devices, .{allocator});
 }
