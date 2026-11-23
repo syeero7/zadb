@@ -44,6 +44,15 @@ pub fn devices(self: @This(), io: Io, allocator: Allocator) ![]internal.DeviceIn
     return execRequest([]internal.DeviceInfo, io, self.ip4, internal.devices, .{allocator});
 }
 
+pub fn transport(
+    self: @This(),
+    io: Io,
+    allocator: Allocator,
+    mode: internal.TransportMode,
+) !void {
+    return execRequest(void, io, self.ip4, internal.transport, .{ allocator, mode });
+}
+
 fn execRequest(
     comptime T: type,
     io: Io,

@@ -94,6 +94,21 @@ test "parse device line" {
     try testing.expectEqualDeep(expected, DeviceInfo.init(device_line));
 }
 
+pub const TransportMode = union(enum) {
+    serial_number: []const u8,
+    usb,
+    local,
+    any,
+
+    pub fn toPayload(self: @This(), allocator: Allocator) ![]const u8 {
+        const prefix = "host:transport";
+        return switch (self) {
+            .serial_number => |serial| mem.concat(allocator, u8, &.{ prefix, ":", serial }),
+            else => mem.concat(allocator, u8, &.{ prefix, "-", @tagName(self) }),
+        };
+    }
+};
+
 pub fn version(writer: *Io.Writer, reader: *Io.Reader) !u32 {
     const payload = "host:version";
     const request = fmt.comptimePrint("{x:0>4}{s}", .{ payload.len, payload });
@@ -148,6 +163,30 @@ pub fn devices(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator) ![]
 
             return device_list.toOwnedSlice(allocator);
         },
+        .fail => {
+            // TODO:
+            @panic("not implemented");
+        },
+        else => unreachable,
+    }
+}
+
+pub fn transport(
+    writer: *Io.Writer,
+    reader: *Io.Reader,
+    allocator: Allocator,
+    mode: TransportMode,
+) !void {
+    const payload = try mode.toPayload(allocator);
+    defer allocator.free(payload);
+
+    const request = try allocator.print("{x:0>4}{s}", .{ payload.len, payload });
+    defer allocator.free(request);
+    try writer.writeAll(request);
+    try writer.flush();
+
+    switch (try status(reader)) {
+        .okay => return,
         .fail => {
             // TODO:
             @panic("not implemented");
