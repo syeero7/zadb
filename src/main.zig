@@ -7,6 +7,6 @@ pub fn main(init: std.process.Init) !void {
 
     const client = try zadb.Client.init(.default);
     // const version = try client.version(io);
-    try client.command(io, gpa, "ls -l /sdcard/");
+    try client.command(io, gpa, "ls -l /sdcard/testx2.txt");
     // std.debug.print("version: {d}\n", .{version});
 }

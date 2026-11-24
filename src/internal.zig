@@ -226,8 +226,16 @@ pub fn transport(
     }
 }
 
+const ShellResult = struct {
+    const Kind = enum(u8) {
+        stderr = '2',
+        stdout = '1',
+        exit = '3',
+    };
+};
+
 pub fn command(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator, cmd_string: []const u8) !void {
-    const payload = try mem.concat(allocator, u8, &.{ "shell:", cmd_string });
+    const payload = try mem.concat(allocator, u8, &.{ "shell,v2:", cmd_string });
     defer allocator.free(payload);
 
     const request = try allocator.print("{x:0>4}{s}", .{ payload.len, payload });
@@ -237,8 +245,9 @@ pub fn command(writer: *Io.Writer, reader: *Io.Reader, allocator: Allocator, cmd
 
     switch (try status(reader)) {
         .okay => {
-            const rem = try reader.allocRemaining(allocator, .limited(1024 * 4));
-            std.debug.print("output: {s}\n", .{rem});
+            const rem = try reader.allocRemaining(allocator, .limited(1024 * 5));
+            defer allocator.free(rem);
+            std.debug.print("output: {any}\n", .{rem});
         },
         .fail => {
             // TODO:
