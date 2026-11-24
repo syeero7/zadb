@@ -3,9 +3,10 @@ const zadb = @import("zadb");
 
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
-    // const gpa = init.gpa;
+    const gpa = init.gpa;
 
     const client = try zadb.Client.init(.default);
-    const version = try client.version(io);
-    std.debug.print("version: {d}\n", .{version});
+    // const version = try client.version(io);
+    try client.command(io, gpa, "ls -l /sdcard/");
+    // std.debug.print("version: {d}\n", .{version});
 }

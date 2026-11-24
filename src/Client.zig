@@ -44,13 +44,15 @@ pub fn devices(self: @This(), io: Io, allocator: Allocator) ![]internal.DeviceIn
     return execRequest([]internal.DeviceInfo, io, self.ip4, internal.devices, .{allocator});
 }
 
-pub fn transport(
-    self: @This(),
-    io: Io,
-    allocator: Allocator,
-    mode: internal.TransportMode,
-) !void {
+pub fn transport(self: @This(), io: Io, allocator: Allocator, mode: internal.TransportMode) !void {
     return execRequest(void, io, self.ip4, internal.transport, .{ allocator, mode });
+}
+
+pub fn command(self: @This(), io: Io, allocator: Allocator, cmd_string: []const u8) !void {
+    var t = try internal.Transport.init(io, allocator, self.ip4, .usb);
+    defer t.deinit(io);
+    try t.execute(io, internal.command, .{ allocator, cmd_string });
+    // return execRequest(void, io, self.ip4, internal.command, .{ allocator, cmd_string });
 }
 
 fn execRequest(
